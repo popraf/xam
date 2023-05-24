@@ -19,7 +19,7 @@ contract Xam {
         name = "XAM2";
         symbol = "XAM2";
         decimals = 18;
-        totalSupply = 1000000000000000000000; //1000 Ether in Wei
+        totalSupply = 1000000000000000000000; //1000 Ether in Wei according to decimals (1e18), Ether=Wei*decimals
         totalWon = 0;
         owner = msg.sender;
 
@@ -103,8 +103,7 @@ contract Xam {
     }
 
     function buyTokens() public payable returns (uint256 tokenAmount) {
-        require(msg.value > 0, "Not enough MATIC on account balance");
-        require(tokenAmount > 0, "Token amount to buy must be higher.");
+        require(msg.value > 0, "Not enough MATIC on account balance or MATIC not sent.");
 
         uint256 amountToBuy = msg.value * tokensPerMatic;
 
