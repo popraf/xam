@@ -130,13 +130,11 @@ contract Xam {
         tokensPerMatic = _tokensPerMatic;
     }
 
-    function withdraw() public {
-        require(msg.sender == owner, "Not a contract owner"); // Ensure that function is called by the owner
-        
-        uint256 ownerBalance = balanceOf(msg.sender);
-        require(ownerBalance > 0, "No MATIC present on contract");
-        (bool sent, ) = msg.sender.call{value: balanceOf(msg.sender)}("");
-        require(sent, "Failed to withdraw");
-    }
-
+  function withdraw() public {
+    require(msg.sender == owner, "Not a contract owner"); // Ensure that function is called by the owner
+    uint256 ownerBalance = address(this).balance;
+    require(ownerBalance > 0, "No MATIC present in Vendor");
+    (bool sent,) = msg.sender.call{value: address(this).balance}("");
+    require(sent, "Failed to withdraw");
+  }
 }
