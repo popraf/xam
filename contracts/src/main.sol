@@ -8,5 +8,7 @@ contract Xam {
         owner = msg.sender;
     }
 
-    
+    function getBalance() public view returns (uint) {
+        return address(this).balance;
+    }
 }
