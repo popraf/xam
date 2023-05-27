@@ -8,12 +8,11 @@ contract Xam {
     uint8 public decimals;
     uint256 public totalSupply;
     uint256 public totalWon;
-    // uint256 public priceThreshold = 1000000;
+
+    uint8 public tokensPerMatic = 100;
 
     mapping(address => uint256) balances;
     mapping(address => mapping(address => uint256)) allowed;
-
-    uint8 public tokensPerMatic = 100;
 
     constructor() {
         name = "XAM2";
