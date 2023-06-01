@@ -5,6 +5,7 @@ import "./Main.sol";
 import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 
 contract XamMechanics is Xam {
+    Xam xam;
     AggregatorV3Interface internal priceFeed;
 
     /**
@@ -19,7 +20,7 @@ contract XamMechanics is Xam {
     /**
      * Events of the contract
      */
-    // event Transfer(address indexed _from, address indexed _to, uint256 _value);
+    // event BetPlaced(address indexed _from, address indexed _to, uint256 _value);
 
     /**
      * Returns the latest price based on Chainlink nodes network
@@ -35,15 +36,48 @@ contract XamMechanics is Xam {
         return price;
     }
 
-    // /**
-    //  * @notice Will cause a certain amount `_betValue` of coins bet.
-    //  * @param _betValue The bet value in XAM tokens.
-    //  * @param _betDirection The prediction of price: -1 short (decrease); 0 stays the same; 1 long (increase).
-    //  */
-    // function placeBet(uint256 _betValue, int8 _betDirection) private returns (bool success) {
-    //     require(xam.balances[msg.sender] >= _betValue, "Not enough XAM to place a bet.");
-    //     require(_betDirection >= -1 && _betDirection <= 1, "Incorrect bet direction, must be: -1 for short, 0 or 1 for long.");
-        
-    // }
+    /**
+     * @notice Will cause a certain `_value` of coins minted to `_to` address.
+     * The minting uses address
+     * @param _to The address that will receive the coin.
+     * @param _value The amount of coin they will receive.
+     */
+    function betMint(address _to, uint _value) burnMintModifier(_value) private returns (bool success) {
+        balances[_to] += _value;
+        totalSupply += _value;
+
+        emit Transfer(address(0), _to, _value);
+        return true;
+    }
+
+    /**
+     * @notice Will cause a certain `_value` of coins burned, and deducted from total supply.
+     * @param _value The amount of coin to be burned.
+     */
+    function betBurn(uint256 _value) burnMintModifier(_value) private returns (bool success) {
+        require(xam.balanceOf(msg.sender) >= _value, "Not enough tokens in balance");
+
+        balances[msg.sender] -= _value;
+        totalSupply -= _value;
+
+        emit Transfer(msg.sender, address(0), _value);
+        return true;
+    }
+
+    /**
+     * @notice Will cause a certain amount `_betValue` of coins bet.
+     * @param _betValue The bet value in XAM tokens.
+     * @param _betDirection The prediction of price: -1 short (decrease); 0 stays the same; 1 long (increase).
+     */
+    function placeBet(uint256 _betValue, int8 _betDirection) public returns (bool success) {
+        require(xam.balanceOf(msg.sender) >= _betValue, "Not enough XAM to place a bet.");
+        require(_betDirection >= -1 && _betDirection <= 1, "Incorrect bet direction, must be: -1 for short, 0 or 1 for long.");
+        betBurn(_betValue);
+        // price check
+        // direction check
+        // final price check
+        // event bet placed
+        return true;
+    }
 
 }

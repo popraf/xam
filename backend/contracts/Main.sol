@@ -85,20 +85,21 @@ contract Xam {
         totalSupply += _value;
 
         emit Transfer(address(0), _to, _value);
-        return true;    
+        return true;
     }
 
     /**
      * @notice Will cause a certain `_value` of coins burned, and deducted from total supply.
      * @param _value The amount of coin to be burned.
      */
-    function burn(uint256 _value) burnMintModifier(_value) private {
-        require(_value <= balances[msg.sender], "Not enough tokens in balance");
+    function burn(uint256 _value) burnMintModifier(_value) private returns (bool success) {
+        require(balances[msg.sender] >= _value, "Not enough tokens in balance");
 
         balances[msg.sender] -= _value;
         totalSupply -= _value;
 
         emit Transfer(msg.sender, address(0), _value);
+        return true;
     }
 
     function buyTokens() public payable returns (uint256 tokenAmount) {
