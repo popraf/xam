@@ -8,6 +8,15 @@ contract XamMechanics is Xam {
     Xam xam;
     AggregatorV3Interface internal priceFeed;
 
+    mapping(address => uint256) numPlacedBets;
+    struct betsHistory {
+        uint80 roundIdOpen;
+        int256 priceOpen;
+        uint80 roundIdClose;
+        int256 priceClose;
+        uint8 betDirection;
+    }
+
     /**
      * Network: Kovan
      * Aggregator: ETH/USD
@@ -25,14 +34,26 @@ contract XamMechanics is Xam {
     /**
      * Returns the latest price based on Chainlink nodes network
      */
-    function getLatestPrice() public view returns (int) {
+    function getLatestPrice() public view returns (uint80, int) {
         (
-            /* uint80 roundID */,// commented out, but might be useful
+            uint80 roundID,
             int price,
             /* uint startedAt */,
             /* uint timeStamp */,
             /* uint80 answeredInRound */
         ) = priceFeed.latestRoundData();
+        return (roundID, price);
+    }
+
+    function getHistoricalPrice(uint80 roundId) public view returns (int256) {
+        (
+            /*uint80 roundID*/,
+            int price,
+            /*uint startedAt*/,
+            uint timeStamp,
+            /*uint80 answeredInRound*/
+        ) = priceFeed.getRoundData(roundId);
+        require(timeStamp > 0, "Round not complete");
         return price;
     }
 
@@ -68,6 +89,8 @@ contract XamMechanics is Xam {
      * @notice Will cause a certain amount `_betValue` of coins bet.
      * @param _betValue The bet value in XAM tokens.
      * @param _betDirection The prediction of price: -1 short (decrease); 0 stays the same; 1 long (increase).
+     * Checking if the user won is being perfermed in checkBet function - by doing so, there's no need to
+     * introduce upkeep.
      */
     function placeBet(uint256 _betValue, int8 _betDirection) public returns (bool success) {
         require(xam.balanceOf(msg.sender) >= _betValue, "Not enough XAM to place a bet.");
@@ -78,6 +101,33 @@ contract XamMechanics is Xam {
         // final price check
         // event bet placed
         return true;
+    }
+
+    /**
+     * 
+     */
+    function checkBet() public returns (bool success) {
+
+    }
+
+    /**
+     * 
+     */
+    function checkAllBets() public returns (bool success) {
+        require(msg.sender == owner, "Not a contract owner"); // Ensure that function is called by the owner
+
+    }
+
+    function getBlockNumber() private returns (uint256) {
+        return block.number;
+    }
+
+    uint256 lastRun;
+    function sleep() private {
+        require(block.timestamp - lastRun > 5 minutes, "Need to wait 5min");
+
+        // TODO Perform the action
+        lastRun = block.timestamp;
     }
 
 }
