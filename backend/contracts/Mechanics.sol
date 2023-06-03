@@ -8,14 +8,30 @@ contract XamMechanics is Xam {
     Xam xam;
     AggregatorV3Interface internal priceFeed;
 
-    mapping(address => uint256) numPlacedBets;
-    struct betsHistory {
+    struct BetsHistory {
         uint80 roundIdOpen;
         int256 priceOpen;
+
+        uint8 betDirection;
+        bool isResolved;
+
         uint80 roundIdClose;
         int256 priceClose;
-        uint8 betDirection;
     }
+
+    int256 totalNumPlacedBets = 0;
+
+    struct UserBets {
+        int256 numPlacedBets;
+        int80 numUnresolvedBets;
+        int80[] unresolvedIndexes;
+        mapping(address => BetsHistory) betsH; //? maybe this way
+        // !! Should be like Above mapping to array !!
+        
+    }
+
+    // mapping(address => int256) numPlacedBets = 0;
+    // mapping(address => BetsHistory) betsHistory;
 
     /**
      * Network: Kovan
@@ -96,9 +112,13 @@ contract XamMechanics is Xam {
         require(xam.balanceOf(msg.sender) >= _betValue, "Not enough XAM to place a bet.");
         require(_betDirection >= -1 && _betDirection <= 1, "Incorrect bet direction, must be: -1 for short, 0 or 1 for long.");
         betBurn(_betValue);
-        // price check
-        // direction check
-        // final price check
+        (entryRoundID, entryPrice) = getLatestPrice(); // check current block ID from chainlink and price
+        roundIdClose = entryRoundID;
+
+        // store entry data in betsHistory struct
+        betsHistory
+
+        
         // event bet placed
         return true;
     }
@@ -107,7 +127,7 @@ contract XamMechanics is Xam {
      * 
      */
     function checkBet() public returns (bool success) {
-
+        // final price check
     }
 
     /**

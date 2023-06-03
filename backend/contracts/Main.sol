@@ -127,6 +127,7 @@ contract Xam {
     function setTokensPerMatic(uint8 _tokensPerMatic) public {
         require(msg.sender == owner, "Not a contract owner"); // Ensure that function is called by the owner
         require(_tokensPerMatic > 0, "Value must be higher than 0!");
+        require(_tokensPerMatic < tokensPerMatic, "Value must be smaller than it is now.");
         tokensPerMatic = _tokensPerMatic;
     }
 
