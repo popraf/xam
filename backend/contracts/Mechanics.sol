@@ -8,30 +8,25 @@ contract XamMechanics is Xam {
     Xam xam;
     AggregatorV3Interface internal priceFeed;
 
-    struct BetsHistory {
+    struct BetsDetails {
         uint80 roundIdOpen;
         int256 priceOpen;
 
-        uint8 betDirection;
+        int8 betDirection;
         bool isResolved;
 
         uint80 roundIdClose;
         int256 priceClose;
     }
 
-    int256 totalNumPlacedBets = 0;
-
     struct UserBets {
-        int256 numPlacedBets;
-        int80 numUnresolvedBets;
-        int80[] unresolvedIndexes;
-        mapping(address => BetsHistory) betsH; //? maybe this way
-        // !! Should be like Above mapping to array !!
-        
+        uint80[] unresolvedIndexes;
+        mapping(uint256 => BetsDetails[]) betsDetails;
     }
 
-    // mapping(address => int256) numPlacedBets = 0;
-    // mapping(address => BetsHistory) betsHistory;
+    mapping(address => UserBets) userBets;
+    mapping(address => uint256) numUserBets;
+    uint256 totalNumPlacedBets = 0;
 
     /**
      * Network: Kovan
@@ -45,32 +40,32 @@ contract XamMechanics is Xam {
     /**
      * Events of the contract
      */
-    // event BetPlaced(address indexed _from, address indexed _to, uint256 _value);
+    event BetPlaced(address indexed _from, uint256 _betValue, int8 _betDirection);
 
     /**
      * Returns the latest price based on Chainlink nodes network
      */
-    function getLatestPrice() public view returns (uint80, int) {
+    function getLatestPrice() public view returns (uint80, int, uint) {
         (
             uint80 roundID,
             int price,
             /* uint startedAt */,
-            /* uint timeStamp */,
+            uint timeStamp,
             /* uint80 answeredInRound */
         ) = priceFeed.latestRoundData();
-        return (roundID, price);
+        return (roundID, price, timeStamp);
     }
 
-    function getHistoricalPrice(uint80 roundId) public view returns (int256) {
+    function getHistoricalPrice(uint80 _roundId) public view returns (int, uint) {
         (
             /*uint80 roundID*/,
             int price,
             /*uint startedAt*/,
             uint timeStamp,
             /*uint80 answeredInRound*/
-        ) = priceFeed.getRoundData(roundId);
+        ) = priceFeed.getRoundData(_roundId);
         require(timeStamp > 0, "Round not complete");
-        return price;
+        return (price, timeStamp);
     }
 
     /**
@@ -80,6 +75,8 @@ contract XamMechanics is Xam {
      * @param _value The amount of coin they will receive.
      */
     function betMint(address _to, uint _value) burnMintModifier(_value) private returns (bool success) {
+        // require(_value >= 0); // uint handles this req
+
         balances[_to] += _value;
         totalSupply += _value;
 
@@ -92,6 +89,7 @@ contract XamMechanics is Xam {
      * @param _value The amount of coin to be burned.
      */
     function betBurn(uint256 _value) burnMintModifier(_value) private returns (bool success) {
+        // require(_value >= 0); // uint handles this req
         require(xam.balanceOf(msg.sender) >= _value, "Not enough tokens in balance");
 
         balances[msg.sender] -= _value;
@@ -99,6 +97,10 @@ contract XamMechanics is Xam {
 
         emit Transfer(msg.sender, address(0), _value);
         return true;
+    }
+
+    function getUserNumBets() public view returns (uint256) {
+        return numUserBets[msg.sender];
     }
 
     /**
@@ -111,15 +113,36 @@ contract XamMechanics is Xam {
     function placeBet(uint256 _betValue, int8 _betDirection) public returns (bool success) {
         require(xam.balanceOf(msg.sender) >= _betValue, "Not enough XAM to place a bet.");
         require(_betDirection >= -1 && _betDirection <= 1, "Incorrect bet direction, must be: -1 for short, 0 or 1 for long.");
+
         betBurn(_betValue);
-        (entryRoundID, entryPrice) = getLatestPrice(); // check current block ID from chainlink and price
-        roundIdClose = entryRoundID;
 
-        // store entry data in betsHistory struct
-        betsHistory
+        uint80 entryRoundID;
+        int entryPrice;
+        uint entryTimeStamp;
+        (entryRoundID, entryPrice, entryTimeStamp) = getLatestPrice(); // check current block ID from chainlink and price roundID, price, timeStamp
 
-        
+        uint80 _roundIdClose = entryRoundID + 1; // Time after which it is possible to determine bet
+
+        // numUserBets[msg.sender] // number of user bets, in arr - currently 0
+
+        // store entry data in userBets struct
+        userBets[msg.sender].betsDetails[1].push(BetsDetails(
+            {
+                roundIdOpen: entryRoundID,
+                priceOpen: entryPrice,
+                betDirection: _betDirection,
+                isResolved: false,
+                roundIdClose: _roundIdClose,
+                priceClose: 1
+            }
+        ));
+
+        // Increase total number of bets
+        totalNumPlacedBets++;
+        numUserBets[msg.sender]++;
+
         // event bet placed
+        emit BetPlaced(msg.sender, _betValue, _betDirection);
         return true;
     }
 
@@ -133,21 +156,21 @@ contract XamMechanics is Xam {
     /**
      * 
      */
-    function checkAllBets() public returns (bool success) {
-        require(msg.sender == owner, "Not a contract owner"); // Ensure that function is called by the owner
+    // function checkAllBets() public returns (bool success) {
+    //     require(msg.sender == owner, "Not a contract owner"); // Ensure that function is called by the owner
 
-    }
+    // }
 
-    function getBlockNumber() private returns (uint256) {
-        return block.number;
-    }
+    // function getBlockNumber() private returns (uint256) {
+    //     return block.number;
+    // }
 
-    uint256 lastRun;
-    function sleep() private {
-        require(block.timestamp - lastRun > 5 minutes, "Need to wait 5min");
+    // uint256 lastRun;
+    // function sleep() private {
+    //     require(block.timestamp - lastRun > 5 minutes, "Need to wait 5min");
 
-        // TODO Perform the action
-        lastRun = block.timestamp;
-    }
+    //     // TODO Perform the action
+    //     lastRun = block.timestamp;
+    // }
 
 }
