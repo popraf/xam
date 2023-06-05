@@ -20,12 +20,12 @@ contract XamMechanics is Xam {
     }
 
     struct UserBets {
-        uint80[] unresolvedIndexes;
-        mapping(uint256 => BetsDetails[]) betsDetails;
+        uint[] unresolvedIndexes;
+        mapping(uint => BetsDetails[]) betsDetails;
     }
 
     mapping(address => UserBets) userBets;
-    mapping(address => uint256) numUserBets;
+    mapping(address => uint) numUserBets;
     uint256 totalNumPlacedBets = 0;
 
     /**
@@ -88,7 +88,7 @@ contract XamMechanics is Xam {
      * @notice Will cause a certain `_value` of coins burned, and deducted from total supply.
      * @param _value The amount of coin to be burned.
      */
-    function betBurn(uint256 _value) burnMintModifier(_value) private returns (bool success) {
+    function betBurn(uint _value) burnMintModifier(_value) private returns (bool success) {
         // require(_value >= 0); // uint handles this req
         require(xam.balanceOf(msg.sender) >= _value, "Not enough tokens in balance");
 
@@ -99,8 +99,12 @@ contract XamMechanics is Xam {
         return true;
     }
 
-    function getUserNumBets() public view returns (uint256) {
+    function getUserNumBets() public view returns (uint) {
         return numUserBets[msg.sender];
+    }
+
+    function getUserUnresolvedNum() public view returns (uint) {
+        return userBets[msg.sender].unresolvedIndexes.length;
     }
 
     /**
@@ -110,7 +114,7 @@ contract XamMechanics is Xam {
      * Checking if the user won is being perfermed in checkBet function - by doing so, there's no need to
      * introduce upkeep.
      */
-    function placeBet(uint256 _betValue, int8 _betDirection) public returns (bool success) {
+    function placeBet(uint _betValue, int8 _betDirection) public returns (bool success) {
         require(xam.balanceOf(msg.sender) >= _betValue, "Not enough XAM to place a bet.");
         require(_betDirection >= -1 && _betDirection <= 1, "Incorrect bet direction, must be: -1 for short, 0 or 1 for long.");
 
@@ -123,19 +127,18 @@ contract XamMechanics is Xam {
 
         uint80 _roundIdClose = entryRoundID + 1; // Time after which it is possible to determine bet
 
-        // numUserBets[msg.sender] // number of user bets, in arr - currently 0
-
         // store entry data in userBets struct
-        userBets[msg.sender].betsDetails[1].push(BetsDetails(
+        userBets[msg.sender].betsDetails[getUserNumBets()+1].push(BetsDetails(
             {
                 roundIdOpen: entryRoundID,
                 priceOpen: entryPrice,
                 betDirection: _betDirection,
                 isResolved: false,
                 roundIdClose: _roundIdClose,
-                priceClose: 1
+                priceClose: 0 // !! To be checked in further steps !!
             }
         ));
+        userBets[msg.sender].unresolvedIndexes[getUserUnresolvedNum()+1] = getUserNumBets()+1;
 
         // Increase total number of bets
         totalNumPlacedBets++;
@@ -149,9 +152,9 @@ contract XamMechanics is Xam {
     /**
      * 
      */
-    function checkBet() public returns (bool success) {
-        // final price check
-    }
+    // function checkBet() public returns (bool success) {
+    //     // final price check
+    // }
 
     /**
      * 
