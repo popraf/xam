@@ -32,9 +32,24 @@ contract XamMechanics is Xam {
      * Network: Kovan
      * Aggregator: ETH/USD
      * Address: 0x9326BFA02ADD2366b30bacB125260Af641031331
+     * * * * * * * * * * * * * * * * * * * * * * * * * * *
+     * Network: Mumbai Testnet
+     * Aggregator: MATIC/USD
+     * Address: 0xd0D5e3DB44DE05E9F294BB0a3bEEaF030DE24Ada
+     * * * * * * * * * * * * * * * * * * * * * * * * * * *
+     * Network: Mumbai Testnet
+     * Aggregator: ETH/USD
+     * Address: 0x0715A7794a1dc8e42615F059dD6e406A6594651A
+     * * * * * * * * * * * * * * * * * * * * * * * * * * *
+     * Network: Polygon Mainnet
+     * Aggregator: ETH/USD
+     * Address: 0xF9680D99D6C9589e2a93a78A04A279e509205945
      */
-    constructor() {
-        priceFeed = AggregatorV3Interface(0x9326BFA02ADD2366b30bacB125260Af641031331);
+
+    address oracleAddress = 0x0715A7794a1dc8e42615F059dD6e406A6594651A;
+
+    constructor()  {
+        priceFeed = AggregatorV3Interface(oracleAddress);
     }
 
     /**
@@ -114,7 +129,7 @@ contract XamMechanics is Xam {
      * Checking if the user won is being perfermed in checkBet function - by doing so, there's no need to
      * introduce upkeep.
      */
-    function placeBet(uint _betValue, int8 _betDirection) public returns (bool success) {
+    function placeBet(uint _betValue, int8 _betDirection) payable public returns (bool success) {
         require(xam.balanceOf(msg.sender) >= _betValue, "Not enough XAM to place a bet.");
         require(_betDirection >= -1 && _betDirection <= 1, "Incorrect bet direction, must be: -1 for short, 0 or 1 for long.");
 
