@@ -105,7 +105,7 @@ contract XamMechanics is Xam {
      */
     function betBurn(uint _value) burnMintModifier(_value) private returns (bool success) {
         // require(_value >= 0); // uint handles this req
-        require(xam.balanceOf(msg.sender) >= _value, "Not enough tokens in balance");
+        require(balanceOf(msg.sender) >= _value, "Not enough tokens in balance");
 
         balances[msg.sender] -= _value;
         totalSupply -= _value;
@@ -122,6 +122,14 @@ contract XamMechanics is Xam {
         return userBets[msg.sender].unresolvedIndexes.length;
     }
 
+    function burnTest(uint _betValue, int8 _betDirection) public returns (bool success) {
+        require(balanceOf(msg.sender) >= _betValue, "Not enough XAM to place a bet.");
+        require(_betDirection >= -1 && _betDirection <= 1, "Incorrect bet direction, must be: -1 for short, 0 or 1 for long.");
+
+        betBurn(_betValue);
+        return true;
+    }
+
     /**
      * @notice Will cause a certain amount `_betValue` of coins bet.
      * @param _betValue The bet value in XAM tokens.
@@ -129,8 +137,8 @@ contract XamMechanics is Xam {
      * Checking if the user won is being perfermed in checkBet function - by doing so, there's no need to
      * introduce upkeep.
      */
-    function placeBet(uint _betValue, int8 _betDirection) payable public returns (bool success) {
-        require(xam.balanceOf(msg.sender) >= _betValue, "Not enough XAM to place a bet.");
+    function placeBet(uint _betValue, int8 _betDirection) public returns (bool success) {
+        require(balanceOf(msg.sender) >= _betValue, "Not enough XAM to place a bet.");
         require(_betDirection >= -1 && _betDirection <= 1, "Incorrect bet direction, must be: -1 for short, 0 or 1 for long.");
 
         betBurn(_betValue);
@@ -142,18 +150,18 @@ contract XamMechanics is Xam {
 
         uint80 _roundIdClose = entryRoundID + 1; // Time after which it is possible to determine bet
 
-        // store entry data in userBets struct
-        userBets[msg.sender].betsDetails[getUserNumBets()+1].push(BetsDetails(
-            {
-                roundIdOpen: entryRoundID,
-                priceOpen: entryPrice,
-                betDirection: _betDirection,
-                isResolved: false,
-                roundIdClose: _roundIdClose,
-                priceClose: 0 // !! To be checked in further steps !!
-            }
-        ));
-        userBets[msg.sender].unresolvedIndexes[getUserUnresolvedNum()+1] = getUserNumBets()+1;
+        // // store entry data in userBets struct
+        // userBets[msg.sender].betsDetails[getUserNumBets()+1].push(BetsDetails(
+        //     {
+        //         roundIdOpen: entryRoundID,
+        //         priceOpen: entryPrice,
+        //         betDirection: _betDirection,
+        //         isResolved: false,
+        //         roundIdClose: _roundIdClose,
+        //         priceClose: 0 // !! To be checked in further steps !!
+        //     }
+        // ));
+        // userBets[msg.sender].unresolvedIndexes[getUserUnresolvedNum()+1] = getUserNumBets()+1;
 
         // Increase total number of bets
         totalNumPlacedBets++;
