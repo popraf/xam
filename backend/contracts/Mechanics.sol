@@ -21,7 +21,7 @@ contract XamMechanics is Xam {
 
     struct UserBets {
         uint[] unresolvedIndexes;
-        mapping(uint => BetsDetails[]) betsDetails;
+        BetsDetails[] betsDetails;
     }
 
     mapping(address => UserBets) userBets;
@@ -161,8 +161,8 @@ contract XamMechanics is Xam {
                 );
 
         // store entry data in userBets struct
-        userBets[msg.sender].betsDetails[_getUserNumBets].push(newBet);
-        userBets[msg.sender].unresolvedIndexes[_getUserNumBets] = _getUserNumBets;
+        userBets[msg.sender].betsDetails.push(newBet);
+        userBets[msg.sender].unresolvedIndexes.push(_getUserNumBets);
 
         // Increase total number of bets
         totalNumPlacedBets++;
