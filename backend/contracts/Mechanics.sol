@@ -46,10 +46,10 @@ contract XamMechanics is Xam {
      * Address: 0xF9680D99D6C9589e2a93a78A04A279e509205945
      */
 
-    address oracleAddress = 0x0715A7794a1dc8e42615F059dD6e406A6594651A;
+    // address oracleAddress = 0xd0D5e3DB44DE05E9F294BB0a3bEEaF030DE24Ada;
 
     constructor()  {
-        priceFeed = AggregatorV3Interface(oracleAddress);
+        priceFeed = AggregatorV3Interface(0xd0D5e3DB44DE05E9F294BB0a3bEEaF030DE24Ada);
     }
 
     /**
@@ -149,19 +149,20 @@ contract XamMechanics is Xam {
         (entryRoundID, entryPrice, entryTimeStamp) = getLatestPrice(); // check current block ID from chainlink and price roundID, price, timeStamp
 
         uint80 _roundIdClose = entryRoundID + 1; // Time after which it is possible to determine bet
+        uint _getUserNumBets = getUserNumBets();
 
-        // // store entry data in userBets struct
-        // userBets[msg.sender].betsDetails[getUserNumBets()+1].push(BetsDetails(
-        //     {
-        //         roundIdOpen: entryRoundID,
-        //         priceOpen: entryPrice,
-        //         betDirection: _betDirection,
-        //         isResolved: false,
-        //         roundIdClose: _roundIdClose,
-        //         priceClose: 0 // !! To be checked in further steps !!
-        //     }
-        // ));
-        // userBets[msg.sender].unresolvedIndexes[getUserUnresolvedNum()+1] = getUserNumBets()+1;
+        BetsDetails memory newBet = BetsDetails(
+                    entryRoundID,
+                    entryPrice,
+                    _betDirection,
+                    false,
+                    _roundIdClose,
+                    0
+                );
+
+        // store entry data in userBets struct
+        userBets[msg.sender].betsDetails[_getUserNumBets].push(newBet);
+        userBets[msg.sender].unresolvedIndexes[_getUserNumBets] = _getUserNumBets;
 
         // Increase total number of bets
         totalNumPlacedBets++;
