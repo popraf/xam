@@ -58,6 +58,8 @@ contract XamMechanics is Xam {
      * Events of the contract
      */
     event BetPlaced(address indexed _from, uint256 _betValue, int8 _betDirection);
+    event BetChecked(address indexed _to);
+    event BetResult(address indexed _to, int8 _betWonTieLost);
 
     /**
      * Returns the latest price based on Chainlink nodes network
@@ -85,37 +87,6 @@ contract XamMechanics is Xam {
         return (price, timeStamp);
     }
 
-    /**
-     * @notice Will cause a certain `_value` of coins minted to `_to` address.
-     * The minting uses address
-     * @param _to The address that will receive the coin.
-     * @param _value The amount of coin they will receive.
-     */
-    function betMint(address _to, uint _value) burnMintModifier(_value) private returns (bool success) {
-        // require(_value >= 0); // uint handles this req
-
-        balances[_to] += _value;
-        totalSupply += _value;
-
-        emit Transfer(address(0), _to, _value);
-        return true;
-    }
-
-    /**
-     * @notice Will cause a certain `_value` of coins burned, and deducted from total supply.
-     * @param _value The amount of coin to be burned.
-     */
-    function betBurn(uint _value) burnMintModifier(_value) private returns (bool success) {
-        // require(_value >= 0); // uint handles this req
-        require(balanceOf(msg.sender) >= _value, "Not enough tokens in balance");
-
-        balances[msg.sender] -= _value;
-        totalSupply -= _value;
-
-        emit Transfer(msg.sender, address(0), _value);
-        return true;
-    }
-
     function getUserNumBets() public view returns (uint) {
         require(numUserBets[msg.sender]>0, "No bets placed!");
         return numUserBets[msg.sender];
@@ -137,7 +108,7 @@ contract XamMechanics is Xam {
         require(balanceOf(msg.sender) >= _betValue, "Not enough XAM to place a bet.");
         require(_betDirection >= -1 && _betDirection <= 1, "Incorrect bet direction, must be: -1 for short, 0 or 1 for long.");
 
-        betBurn(_betValue);
+        burn(_betValue);
 
         (uint80 entryRoundID, int entryPrice, uint entryTimeStamp) = getLatestPrice(); // check current block ID from chainlink and price roundID, price, timeStamp
 
@@ -174,10 +145,6 @@ contract XamMechanics is Xam {
         (latestRoundId, , latestTimestamp) = getLatestPrice();
     }
 
-    // function checkWinningCondition() private returns (bool success) {
-    //     return true;
-    // }
-
     // function removeFirstIndex(uint256 _index) external {
     //     require(array.length > _index, "Out of bounds");
     //     // move all elements to the left, starting from the `index + 1`
@@ -194,6 +161,11 @@ contract XamMechanics is Xam {
         return userBets[msg.sender].betsDetails[unresolvedIndex];
     }
 
+    function checkWinningCondition(int256 _entryPrice, int256 _closePrice) private returns (bool success) {
+        emit BetResult();
+        return true;
+    }
+
     /**
      * 
      */
@@ -204,15 +176,16 @@ contract XamMechanics is Xam {
         BetsDetails memory selectedBet = getUnresolvedBet();
         require(selectedBet.isResolved == false, "Critical error! Bet already resolved");
         require(latestTimestamp > (selectedBet.timestampOpen+60) && latestRoundId > selectedBet.roundIdClose, "Try to check bet again later");
-        (int price, uint timestamp) = getHistoricalPrice(selectedBet.roundIdClose);
-
+        (int histPrice, uint histTimestamp) = getHistoricalPrice(selectedBet.roundIdClose);
+        
         // + check current block timestamp and round id
         // + get data by using unresolvedBets arr - first record
         // + check if timestamp and round id is higher than those from bet
-        // if yes, check by getHistoricalPrice
+        // + if yes, check by getHistoricalPrice
         // execute checkWinningCondition
         // pop from unresolvedBets arr first record
         // set isResolved, timestampClose and price close
+        emit BetChecked();
         return true;
     }
 
