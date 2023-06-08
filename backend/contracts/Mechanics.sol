@@ -189,6 +189,7 @@ contract XamMechanics is Xam {
 
     function getUnresolvedBet() private view returns (BetsDetails memory) {
         // Function returns the first struct containing unresolved bets
+        require(getUserUnresolvedNum()>0, "No bets awaiting resolve!");
         uint unresolvedIndex = userBets[msg.sender].unresolvedIndexes[0];
         return userBets[msg.sender].betsDetails[unresolvedIndex];
     }
@@ -202,14 +203,16 @@ contract XamMechanics is Xam {
         checkBlockTiming();
         BetsDetails memory selectedBet = getUnresolvedBet();
         require(selectedBet.isResolved == false, "Critical error! Bet already resolved");
-        require(latestTimestamp > selectedBet.timestampOpen && latestRoundId > selectedBet.roundIdClose, "Try to check bet again later");
-        
-        // check current block timestamp and round id
-        // get data by using unresolvedBets arr - first record
-        // check if timestamp and round id is higher than those from bet
+        require(latestTimestamp > (selectedBet.timestampOpen+60) && latestRoundId > selectedBet.roundIdClose, "Try to check bet again later");
+        (int price, uint timestamp) = getHistoricalPrice(selectedBet.roundIdClose);
+
+        // + check current block timestamp and round id
+        // + get data by using unresolvedBets arr - first record
+        // + check if timestamp and round id is higher than those from bet
         // if yes, check by getHistoricalPrice
         // execute checkWinningCondition
         // pop from unresolvedBets arr first record
+        // set isResolved, timestampClose and price close
         return true;
     }
 
