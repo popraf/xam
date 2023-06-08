@@ -11,12 +11,14 @@ contract XamMechanics is Xam {
     struct BetsDetails {
         uint80 roundIdOpen;
         int256 priceOpen;
+        uint256 timestampOpen;
 
         int8 betDirection;
         bool isResolved;
 
         uint80 roundIdClose;
         int256 priceClose;
+        int256 timestampClose;
     }
 
     struct UserBets {
@@ -26,7 +28,9 @@ contract XamMechanics is Xam {
 
     mapping(address => UserBets) userBets;
     mapping(address => uint) numUserBets;
-    uint256 totalNumPlacedBets = 0;
+    uint totalNumPlacedBets = 0;
+    uint latestTimestamp;
+    uint80 latestRoundId;
 
     /**
      * Network: Kovan
@@ -45,8 +49,6 @@ contract XamMechanics is Xam {
      * Aggregator: ETH/USD
      * Address: 0xF9680D99D6C9589e2a93a78A04A279e509205945
      */
-
-    // address oracleAddress = 0xd0D5e3DB44DE05E9F294BB0a3bEEaF030DE24Ada;
 
     constructor()  {
         priceFeed = AggregatorV3Interface(0xd0D5e3DB44DE05E9F294BB0a3bEEaF030DE24Ada);
@@ -115,19 +117,13 @@ contract XamMechanics is Xam {
     }
 
     function getUserNumBets() public view returns (uint) {
+        require(numUserBets[msg.sender]>0, "No bets placed!");
         return numUserBets[msg.sender];
     }
 
     function getUserUnresolvedNum() public view returns (uint) {
+        require(userBets[msg.sender].unresolvedIndexes.length>0, "No bets awaiting resolve!");
         return userBets[msg.sender].unresolvedIndexes.length;
-    }
-
-    function burnTest(uint _betValue, int8 _betDirection) public returns (bool success) {
-        require(balanceOf(msg.sender) >= _betValue, "Not enough XAM to place a bet.");
-        require(_betDirection >= -1 && _betDirection <= 1, "Incorrect bet direction, must be: -1 for short, 0 or 1 for long.");
-
-        betBurn(_betValue);
-        return true;
     }
 
     /**
@@ -143,22 +139,21 @@ contract XamMechanics is Xam {
 
         betBurn(_betValue);
 
-        uint80 entryRoundID;
-        int entryPrice;
-        uint entryTimeStamp;
-        (entryRoundID, entryPrice, entryTimeStamp) = getLatestPrice(); // check current block ID from chainlink and price roundID, price, timeStamp
+        (uint80 entryRoundID, int entryPrice, uint entryTimeStamp) = getLatestPrice(); // check current block ID from chainlink and price roundID, price, timeStamp
 
         uint80 _roundIdClose = entryRoundID + 1; // Time after which it is possible to determine bet
         uint _getUserNumBets = getUserNumBets();
 
-        BetsDetails memory newBet = BetsDetails(
-                    entryRoundID,
-                    entryPrice,
-                    _betDirection,
-                    false,
-                    _roundIdClose,
-                    0
-                );
+        BetsDetails memory newBet = BetsDetails({
+                    roundIdOpen: entryRoundID,
+                    priceOpen: entryPrice,
+                    timestampOpen: entryTimeStamp,
+                    betDirection: _betDirection,
+                    isResolved: false,
+                    roundIdClose: _roundIdClose,
+                    priceClose: 0,
+                    timestampClose: 0
+                });
 
         // store entry data in userBets struct
         userBets[msg.sender].betsDetails.push(newBet);
@@ -173,12 +168,50 @@ contract XamMechanics is Xam {
         return true;
     }
 
+    function checkBlockTiming() private {
+        // Function overrides global variables determining latest round ID and timestamp
+        // require(block.timestamp - lastRun > 5 minutes, "Need to wait 5min");
+        (latestRoundId, , latestTimestamp) = getLatestPrice();
+    }
+
+    // function checkWinningCondition() private returns (bool success) {
+    //     return true;
+    // }
+
+    // function removeFirstIndex(uint256 _index) external {
+    //     require(array.length > _index, "Out of bounds");
+    //     // move all elements to the left, starting from the `index + 1`
+    //     for (uint256 i = _index; i < _index.length - 1; i++) {
+    //         array[i] = array[i+1];
+    //     }
+    //     array.pop(); // delete the last item
+    // }
+
+    function getUnresolvedBet() private view returns (BetsDetails memory) {
+        // Function returns the first struct containing unresolved bets
+        uint unresolvedIndex = userBets[msg.sender].unresolvedIndexes[0];
+        return userBets[msg.sender].betsDetails[unresolvedIndex];
+    }
+
     /**
      * 
      */
-    // function checkBet() public returns (bool success) {
-    //     // final price check
-    // }
+    function checkBet() public returns (bool success) {
+        // final price check
+        require(getUserUnresolvedNum()>0, "No unresolved bets!");
+        checkBlockTiming();
+        BetsDetails memory selectedBet = getUnresolvedBet();
+        require(selectedBet.isResolved == false, "Critical error! Bet already resolved");
+        require(latestTimestamp > selectedBet.timestampOpen && latestRoundId > selectedBet.roundIdClose, "Try to check bet again later");
+        
+        // check current block timestamp and round id
+        // get data by using unresolvedBets arr - first record
+        // check if timestamp and round id is higher than those from bet
+        // if yes, check by getHistoricalPrice
+        // execute checkWinningCondition
+        // pop from unresolvedBets arr first record
+        return true;
+    }
 
     /**
      * 
@@ -187,17 +220,7 @@ contract XamMechanics is Xam {
     //     require(msg.sender == owner, "Not a contract owner"); // Ensure that function is called by the owner
 
     // }
+    
 
-    // function getBlockNumber() private returns (uint256) {
-    //     return block.number;
-    // }
-
-    // uint256 lastRun;
-    // function sleep() private {
-    //     require(block.timestamp - lastRun > 5 minutes, "Need to wait 5min");
-
-    //     // TODO Perform the action
-    //     lastRun = block.timestamp;
-    // }
 
 }
