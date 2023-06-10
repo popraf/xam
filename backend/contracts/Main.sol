@@ -78,9 +78,7 @@ contract Xam {
      * @param _to The address that will receive the coin.
      * @param _value The amount of coin they will receive.
      */
-    function mint(address _to, uint _value) burnMintModifier(_value) private returns (bool success) {
-        // require(msg.sender == owner); // TODO: ?
-
+    function mint(address _to, uint _value) burnMintModifier(_value) internal returns (bool success) {
         balances[_to] += _value;
         totalSupply += _value;
 
@@ -92,7 +90,7 @@ contract Xam {
      * @notice Will cause a certain `_value` of coins burned, and deducted from total supply.
      * @param _value The amount of coin to be burned.
      */
-    function burn(uint256 _value) burnMintModifier(_value) private returns (bool success) {
+    function burn(uint256 _value) burnMintModifier(_value) public returns (bool success) {
         require(balances[msg.sender] >= _value, "Not enough tokens in balance");
 
         balances[msg.sender] -= _value;

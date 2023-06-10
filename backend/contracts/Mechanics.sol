@@ -9,6 +9,8 @@ contract XamMechanics is Xam {
     AggregatorV3Interface internal priceFeed;
 
     struct BetsDetails {
+        uint betValue;
+
         uint80 roundIdOpen;
         int256 priceOpen;
         uint256 timestampOpen;
@@ -116,6 +118,7 @@ contract XamMechanics is Xam {
         uint _getUserNumBets = getUserNumBets();
 
         BetsDetails memory newBet = BetsDetails({
+                    betValue: _betValue,
                     roundIdOpen: entryRoundID,
                     priceOpen: entryPrice,
                     timestampOpen: entryTimeStamp,
@@ -161,8 +164,24 @@ contract XamMechanics is Xam {
         return userBets[msg.sender].betsDetails[unresolvedIndex];
     }
 
-    function checkWinningCondition(int256 _entryPrice, int256 _closePrice) private returns (bool success) {
-        emit BetResult();
+    function checkWinningCondition(address _to, uint _betValue, int256 _entryPrice, int256 _closePrice) private returns (bool success) {
+        int8 betWonTieLost = 0;
+
+        if (_closePrice < _entryPrice) {
+            // Lost bet
+            // Value is already burned
+            betWonTieLost = -1;
+        } else if (_closePrice > _entryPrice) {
+            // Won bet
+            // Mint tokens
+            betWonTieLost = 1;
+            mint(_to, (_betValue*2)); // TODO: 1.8 + round
+        } else {
+            // No price change - bet returned
+            // int8 betWonTieLost = 0;
+            mint(_to, _betValue);
+        }
+        emit BetResult(_to, betWonTieLost);
         return true;
     }
 
@@ -176,7 +195,10 @@ contract XamMechanics is Xam {
         BetsDetails memory selectedBet = getUnresolvedBet();
         require(selectedBet.isResolved == false, "Critical error! Bet already resolved");
         require(latestTimestamp > (selectedBet.timestampOpen+60) && latestRoundId > selectedBet.roundIdClose, "Try to check bet again later");
+
         (int histPrice, uint histTimestamp) = getHistoricalPrice(selectedBet.roundIdClose);
+        // require(histTimestamp > latestTimestamp, "Error"); // TODO: Check if it is timestamp of execution
+        checkWinningCondition(msg.sender, selectedBet.betValue, selectedBet.priceOpen, histPrice);
         
         // + check current block timestamp and round id
         // + get data by using unresolvedBets arr - first record
@@ -185,7 +207,7 @@ contract XamMechanics is Xam {
         // execute checkWinningCondition
         // pop from unresolvedBets arr first record
         // set isResolved, timestampClose and price close
-        emit BetChecked();
+        emit BetChecked(msg.sender);
         return true;
     }
 
