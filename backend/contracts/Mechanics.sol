@@ -93,9 +93,9 @@ contract XamMechanics is Xam {
         return numUserBets[msg.sender];
     }
 
-    function getUserUnresolvedNum() public view returns (uint) {
-        require(userBets[msg.sender].unresolvedIndexes.length>0, "No bets awaiting resolve!");
-        return userBets[msg.sender].unresolvedIndexes.length;
+    function getUserUnresolvedNum(address _from) public view returns (uint) {
+        require(userBets[_from].unresolvedIndexes.length>0, "No bets awaiting resolve!");
+        return userBets[_from].unresolvedIndexes.length;
     }
 
     /**
@@ -148,23 +148,23 @@ contract XamMechanics is Xam {
     }
 
     function removeFirstUnresolvedIndex(address _from) private {
-        require(getUserUnresolvedNum() > 0, "Out of bounds");
+        require(getUserUnresolvedNum(_from) > 0, "Out of bounds");
         
-        if (getUserUnresolvedNum() == 1) {
+        if (getUserUnresolvedNum(_from) == 1) {
             userBets[_from].unresolvedIndexes.pop();
         } else {
-            for(uint i = 0; i < getUserUnresolvedNum()-1; i++) {
+            for(uint i = 0; i < getUserUnresolvedNum(_from)-1; i++) {
                 userBets[_from].unresolvedIndexes[i] = userBets[_from].unresolvedIndexes[i+1];
             }
             userBets[_from].unresolvedIndexes.pop();
         }
     }
 
-    function getUnresolvedBet() private view returns (BetsDetails storage) {
+    function getUnresolvedBet(address _from) private view returns (BetsDetails storage) {
         // Function returns the first struct containing unresolved bets
-        require(getUserUnresolvedNum()>0, "No bets awaiting resolve!");
-        uint unresolvedIndex = userBets[msg.sender].unresolvedIndexes[0];
-        return userBets[msg.sender].betsDetails[unresolvedIndex];
+        require(getUserUnresolvedNum(_from)>0, "No bets awaiting resolve!");
+        uint unresolvedIndex = userBets[_from].unresolvedIndexes[0];
+        return userBets[_from].betsDetails[unresolvedIndex];
     }
 
     function checkWinningCondition(address _to, uint _betValue, int256 _entryPrice, int256 _closePrice, int8 _betDirection) private returns (bool success) {
@@ -216,43 +216,26 @@ contract XamMechanics is Xam {
     /**
      * 
      */
-    function checkBet() public returns (bool success) {
+    function checkBet(address _from) public returns (bool success) {
         // final price check
-        require(getUserUnresolvedNum()>0, "No unresolved bets!");
+        require(getUserUnresolvedNum(_from)>0, "No unresolved bets!");
         checkBlockTiming();
-        BetsDetails storage selectedBet = getUnresolvedBet();
+        BetsDetails storage selectedBet = getUnresolvedBet(_from);
         require(selectedBet.isResolved == false, "Critical error! Bet already resolved");
         require(latestTimestamp > (selectedBet.timestampOpen+60) && latestRoundId > selectedBet.roundIdClose, "Try to check bet again later");
 
         (int histPrice, /* uint histTimestamp */) = getHistoricalPrice(selectedBet.roundIdClose);
         
-        checkWinningCondition(msg.sender, selectedBet.betValue, selectedBet.priceOpen, histPrice, selectedBet.betDirection); // Check bet
-        removeFirstUnresolvedIndex(msg.sender); // Remove checked index from array containing items to be checked
+        checkWinningCondition(_from, selectedBet.betValue, selectedBet.priceOpen, histPrice, selectedBet.betDirection); // Check bet
+        removeFirstUnresolvedIndex(_from); // Remove checked index from array containing items to be checked
 
         // Override existing data in struct
         selectedBet.isResolved = true;
         selectedBet.timestampClose = latestTimestamp;
         selectedBet.priceClose = histPrice;
         
-        // + check current block timestamp and round id
-        // + get data by using unresolvedBets arr - first record
-        // + check if timestamp and round id is higher than those from bet
-        // + if yes, check by getHistoricalPrice
-        // + execute checkWinningCondition
-        // pop from unresolvedBets arr first record
-        // set isResolved, timestampClose and price close
-        emit BetChecked(msg.sender);
+        emit BetChecked(_from);
         return true;
     }
-
-    /**
-     * 
-     */
-    // function checkAllBets() public returns (bool success) {
-    //     require(msg.sender == owner, "Not a contract owner"); // Ensure that function is called by the owner
-
-    // }
-    
-
 
 }
