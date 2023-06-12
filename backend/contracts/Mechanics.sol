@@ -90,7 +90,6 @@ contract XamMechanics is Xam {
     }
 
     function getUserNumBets() public view returns (uint) {
-        require(numUserBets[msg.sender]>0, "No bets placed!");
         return numUserBets[msg.sender];
     }
 
@@ -168,23 +167,48 @@ contract XamMechanics is Xam {
         return userBets[msg.sender].betsDetails[unresolvedIndex];
     }
 
-    function checkWinningCondition(address _to, uint _betValue, int256 _entryPrice, int256 _closePrice) private returns (bool success) {
+    function checkWinningCondition(address _to, uint _betValue, int256 _entryPrice, int256 _closePrice, int8 _betDirection) private returns (bool success) {
         int8 betWonTieLost = 0;
 
-        if (_closePrice < _entryPrice) {
-            // Lost bet
-            // Value is already burned
-            betWonTieLost = -1;
-        } else if (_closePrice > _entryPrice) {
-            // Won bet
-            // Mint tokens
-            betWonTieLost = 1;
-            mint(_to, (_betValue*2)); // TODO: 1.8 + round
+        if (_betDirection == 1) {
+            // Long
+            if (_closePrice <= _entryPrice) {
+                // Lost bet
+                // Value is already burned
+                betWonTieLost = -1;
+            } else {
+                // Won bet
+                // Mint tokens
+                betWonTieLost = 1;
+                mint(_to, (_betValue*2)); // TODO: 1.8 + round
+            }
+
+        } else if (_betDirection == -1) {
+            // Short
+            if (_closePrice >= _entryPrice) {
+                // Lost bet
+                // Value is already burned
+                betWonTieLost = -1;
+            } else {
+                // Won bet
+                // Mint tokens
+                betWonTieLost = 1;
+                mint(_to, (_betValue*2)); // TODO: 1.8 + round
+            }
+
         } else {
-            // No price change - bet returned
-            // int8 betWonTieLost = 0;
-            mint(_to, _betValue);
+            // Stays the same
+            if (_closePrice == _entryPrice) {
+                // Won bet
+                // Mint tokens
+                betWonTieLost = 1;
+                mint(_to, (_betValue*2)); // TODO: 1.8 + round
+            } else {
+                // Lost bet
+                betWonTieLost = -1;
+            }
         }
+
         emit BetResult(_to, betWonTieLost);
         return true;
     }
@@ -202,7 +226,7 @@ contract XamMechanics is Xam {
 
         (int histPrice, /* uint histTimestamp */) = getHistoricalPrice(selectedBet.roundIdClose);
         
-        checkWinningCondition(msg.sender, selectedBet.betValue, selectedBet.priceOpen, histPrice); // Check bet
+        checkWinningCondition(msg.sender, selectedBet.betValue, selectedBet.priceOpen, histPrice, selectedBet.betDirection); // Check bet
         removeFirstUnresolvedIndex(msg.sender); // Remove checked index from array containing items to be checked
 
         // Override existing data in struct
