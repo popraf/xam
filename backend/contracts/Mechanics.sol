@@ -20,7 +20,7 @@ contract XamMechanics is Xam {
 
         uint80 roundIdClose;
         int256 priceClose;
-        int256 timestampClose;
+        uint256 timestampClose;
     }
 
     struct UserBets {
@@ -60,8 +60,8 @@ contract XamMechanics is Xam {
      * Events of the contract
      */
     event BetPlaced(address indexed _from, uint256 _betValue, int8 _betDirection);
-    event BetChecked(address indexed _to);
-    event BetResult(address indexed _to, int8 _betWonTieLost);
+    event BetChecked(address indexed _from);
+    event BetResult(address indexed _from, int8 _betWonTieLost);
 
     /**
      * Returns the latest price based on Chainlink nodes network
@@ -148,16 +148,20 @@ contract XamMechanics is Xam {
         (latestRoundId, , latestTimestamp) = getLatestPrice();
     }
 
-    // function removeFirstIndex(uint256 _index) external {
-    //     require(array.length > _index, "Out of bounds");
-    //     // move all elements to the left, starting from the `index + 1`
-    //     for (uint256 i = _index; i < _index.length - 1; i++) {
-    //         array[i] = array[i+1];
-    //     }
-    //     array.pop(); // delete the last item
-    // }
+    function removeFirstUnresolvedIndex(address _from) private {
+        require(getUserUnresolvedNum() > 0, "Out of bounds");
+        
+        if (getUserUnresolvedNum() == 1) {
+            userBets[_from].unresolvedIndexes.pop();
+        } else {
+            for(uint i = 0; i < getUserUnresolvedNum()-1; i++) {
+                userBets[_from].unresolvedIndexes[i] = userBets[_from].unresolvedIndexes[i+1];
+            }
+            userBets[_from].unresolvedIndexes.pop();
+        }
+    }
 
-    function getUnresolvedBet() private view returns (BetsDetails memory) {
+    function getUnresolvedBet() private view returns (BetsDetails storage) {
         // Function returns the first struct containing unresolved bets
         require(getUserUnresolvedNum()>0, "No bets awaiting resolve!");
         uint unresolvedIndex = userBets[msg.sender].unresolvedIndexes[0];
@@ -192,19 +196,25 @@ contract XamMechanics is Xam {
         // final price check
         require(getUserUnresolvedNum()>0, "No unresolved bets!");
         checkBlockTiming();
-        BetsDetails memory selectedBet = getUnresolvedBet();
+        BetsDetails storage selectedBet = getUnresolvedBet();
         require(selectedBet.isResolved == false, "Critical error! Bet already resolved");
         require(latestTimestamp > (selectedBet.timestampOpen+60) && latestRoundId > selectedBet.roundIdClose, "Try to check bet again later");
 
-        (int histPrice, uint histTimestamp) = getHistoricalPrice(selectedBet.roundIdClose);
-        // require(histTimestamp > latestTimestamp, "Error"); // TODO: Check if it is timestamp of execution
-        checkWinningCondition(msg.sender, selectedBet.betValue, selectedBet.priceOpen, histPrice);
+        (int histPrice, /* uint histTimestamp */) = getHistoricalPrice(selectedBet.roundIdClose);
+        
+        checkWinningCondition(msg.sender, selectedBet.betValue, selectedBet.priceOpen, histPrice); // Check bet
+        removeFirstUnresolvedIndex(msg.sender); // Remove checked index from array containing items to be checked
+
+        // Override existing data in struct
+        selectedBet.isResolved = true;
+        selectedBet.timestampClose = latestTimestamp;
+        selectedBet.priceClose = histPrice;
         
         // + check current block timestamp and round id
         // + get data by using unresolvedBets arr - first record
         // + check if timestamp and round id is higher than those from bet
         // + if yes, check by getHistoricalPrice
-        // execute checkWinningCondition
+        // + execute checkWinningCondition
         // pop from unresolvedBets arr first record
         // set isResolved, timestampClose and price close
         emit BetChecked(msg.sender);
