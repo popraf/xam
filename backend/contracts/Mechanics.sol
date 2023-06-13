@@ -61,7 +61,7 @@ contract XamMechanics is Xam {
      */
     event BetPlaced(address indexed _from, uint256 _betValue, int8 _betDirection);
     event BetChecked(address indexed _from);
-    event BetResult(address indexed _from, int8 _betWonTieLost);
+    event BetResult(address indexed _from, int8 _betWonTieLost, int8 _betDirection);
 
     /**
      * Returns the latest price based on Chainlink nodes network
@@ -209,7 +209,7 @@ contract XamMechanics is Xam {
             }
         }
 
-        emit BetResult(_to, betWonTieLost);
+        emit BetResult(_to, betWonTieLost, _betDirection);
         return true;
     }
 
