@@ -4,6 +4,12 @@ pragma solidity >=0.8.18;
 import "./Main.sol";
 import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 
+// Automation:
+// LINK on polygon testnet contract address: https://docs.chain.link/resources/link-token-contracts
+// Get test LINK: https://faucets.chain.link/mumbai
+// Best practices: https://docs.chain.link/chainlink-automation/compatible-contract-best-practice
+// Managing upkeep: https://docs.chain.link/chainlink-automation/manage-upkeeps
+
 contract XamMechanics is Xam {
     Xam xam;
     AggregatorV3Interface internal priceFeed;
@@ -30,6 +36,7 @@ contract XamMechanics is Xam {
 
     mapping(address => UserBets) userBets;
     mapping(address => uint) numUserBets;
+    mapping(address => bool) isAddrBeingChecked;
     uint totalNumPlacedBets = 0;
     uint latestTimestamp;
     uint80 latestRoundId;
@@ -135,6 +142,7 @@ contract XamMechanics is Xam {
         // Increase total number of bets
         totalNumPlacedBets++;
         numUserBets[msg.sender]++;
+        isAddrBeingChecked[msg.sender] = false;
 
         // event bet placed
         emit BetPlaced(msg.sender, _betValue, _betDirection);
@@ -218,8 +226,12 @@ contract XamMechanics is Xam {
      */
     function checkBet(address _from) public returns (bool success) {
         // final price check
-        require(getUserUnresolvedNum(_from)>0, "No unresolved bets!");
         checkBlockTiming();
+
+        require(isAddrBeingChecked[_from] == false, "Bet is being checked!");
+        isAddrBeingChecked[_from] = true;
+        
+        require(getUserUnresolvedNum(_from)>0, "No unresolved bets!");
         BetsDetails storage selectedBet = getUnresolvedBet(_from);
         require(selectedBet.isResolved == false, "Critical error! Bet already resolved");
         require(latestTimestamp > (selectedBet.timestampOpen+60) && latestRoundId > selectedBet.roundIdClose, "Try to check bet again later");
@@ -233,6 +245,8 @@ contract XamMechanics is Xam {
         selectedBet.isResolved = true;
         selectedBet.timestampClose = latestTimestamp;
         selectedBet.priceClose = histPrice;
+        
+        isAddrBeingChecked[_from] = false;
         
         emit BetChecked(_from);
         return true;
