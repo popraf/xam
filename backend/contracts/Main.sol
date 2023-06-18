@@ -109,15 +109,6 @@ contract Xam {
         (bool minted) = mint(msg.sender, amountToBuy);
         require(minted, "Failed to mint tokens to user");
 
-        // // Commented out below - instead minting is used
-        // // // Check if the Vendor Contract has enough amount of tokens for the transaction
-        // uint256 vendorBalance = xam.balanceOf(address(this));
-        // require(vendorBalance >= amountToBuy, "Vendor has insufficient tokens");
-
-        // // // Transfer token to the msg.sender
-        // (bool sent) = xam.transfer(msg.sender, amountToBuy);
-        // require(sent, "Failed to transfer token to user");
-
         emit BuyTokens(msg.sender, msg.value, amountToBuy);
         return amountToBuy;
     }
