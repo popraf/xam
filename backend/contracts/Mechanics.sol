@@ -37,6 +37,7 @@ contract XamMechanics is Xam {
     mapping(address => UserBets) userBets;
     mapping(address => uint) numUserBets;
     mapping(address => bool) isAddrBeingChecked;
+    address[] addrToCheck;
     uint totalNumPlacedBets = 0;
     uint latestTimestamp;
     uint80 latestRoundId;
@@ -139,10 +140,11 @@ contract XamMechanics is Xam {
         userBets[msg.sender].betsDetails.push(newBet);
         userBets[msg.sender].unresolvedIndexes.push(_getUserNumBets);
 
-        // Increase total number of bets
+        // Increase total number of bets, set flag isAddrBeingChecked, push to addrToCheck arr
         totalNumPlacedBets++;
         numUserBets[msg.sender]++;
         isAddrBeingChecked[msg.sender] = false;
+        addrToCheck.push(msg.sender);
 
         // event bet placed
         emit BetPlaced(msg.sender, _betValue, _betDirection);
@@ -245,11 +247,37 @@ contract XamMechanics is Xam {
         selectedBet.isResolved = true;
         selectedBet.timestampClose = latestTimestamp;
         selectedBet.priceClose = histPrice;
-        
+
         isAddrBeingChecked[_from] = false;
         
         emit BetChecked(_from);
         return true;
     }
 
+    function addrChecked(uint _index) private returns (bool success) {
+        // remove index from addrToCheck
+        require(_index < addrToCheck.length, "Index out of bounds");
+
+        for (uint i = _index; i < addrToCheck.length-1; i++) {
+            addrToCheck[i] = addrToCheck[i + 1];
+        }
+
+        addrToCheck.pop();
+        return true;
+    }
+
+    function checkAllBets() external returns (bool success) {
+        require(addrToCheck.length>0,"No addresses pending check");
+
+        for (uint i = 0; i < addrToCheck.length-1; i++) {
+            checkBet(addrToCheck[i]);
+
+            // Remove address from addrToCheck if conditions are met
+            if(getUserUnresolvedNum(addrToCheck[i]) == 0) {
+                addrChecked(i);
+            }
+        }
+
+        return true;
+    }
 }
