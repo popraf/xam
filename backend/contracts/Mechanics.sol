@@ -328,6 +328,7 @@ contract XamMechanics is Xam {
             // Remove address from addrToCheck array if all user bets are checked
             if(getUserUnresolvedNum(addrToCheck[i]) == 0) {
                 addrChecked(i);
+                i--;
             }
         }
 
