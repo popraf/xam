@@ -15,8 +15,8 @@ contract Xam {
     mapping(address => mapping(address => uint256)) allowed;
 
     constructor() {
-        name = "XAM2";
-        symbol = "XAM2";
+        name = "XAM";
+        symbol = "XAM";
         decimals = 18;
         totalSupply = 1000000000000000000000; //1000 Ether in Wei according to decimals (1e18), Ether=Wei*decimals
         totalWon = 0;

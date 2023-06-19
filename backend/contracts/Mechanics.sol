@@ -246,7 +246,7 @@ contract XamMechanics is Xam {
                 // Won bet
                 // Mint tokens
                 betWonTieLost = 1;
-                mint(_to, (_betValue*2)); // TODO: 1.8 + round
+                mint(_to, (_betValue*2));
             }
 
         } else if (_betDirection == -1) {
@@ -259,7 +259,7 @@ contract XamMechanics is Xam {
                 // Won bet
                 // Mint tokens
                 betWonTieLost = 1;
-                mint(_to, (_betValue*2)); // TODO: 1.8 + round
+                mint(_to, (_betValue*2));
             }
 
         } else {
@@ -268,7 +268,7 @@ contract XamMechanics is Xam {
                 // Won bet
                 // Mint tokens
                 betWonTieLost = 1;
-                mint(_to, (_betValue*2)); // TODO: 1.8 + round
+                mint(_to, (_betValue*2));
             } else {
                 // Lost bet
                 betWonTieLost = -1;
