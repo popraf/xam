@@ -43,6 +43,7 @@ contract XamMechanics is Xam {
     uint latestTimestamp;
     uint80 latestRoundId;
     bool checkAllBetsInProgress = false;
+    uint timeThreshold = 60;
 
     /**
      * Network: Kovan
@@ -123,7 +124,6 @@ contract XamMechanics is Xam {
      * @return `numUserBets[msg.sender]` Returns number of unresolved bets.
      */
     function getUserUnresolvedNum(address _from) public view returns (uint) {
-        // require(userBets[_from].unresolvedIndexes.length>0, "No bets awaiting resolve! in getUserUnresolvedNum");
         return userBets[_from].unresolvedIndexes.length;
     }
 
@@ -132,7 +132,7 @@ contract XamMechanics is Xam {
      * Bet must be checked (resolved) afterwards in order to determine if user won.
      * @param _betValue The bet value in XAM tokens.
      * @param _betDirection The prediction of price: -1 short (decrease); 0 stays the same; 1 long (increase).
-     * Checking if the user won is being perfermed in checkBet function.
+     * Checking if the user won is being perfermed in checkBetPublic and checkBetPrivate function function.
      * @return success Returns true at the end of the function runtime.
      */
     function placeBet(uint _betValue, int8 _betDirection) public returns (bool success) {
@@ -205,10 +205,23 @@ contract XamMechanics is Xam {
      * @dev Any changes to this function returns are permanently stored as function returns `storage` data.
      */
     function getUnresolvedBet(address _from) private view returns (BetsDetails storage) {
-        require(getUserUnresolvedNum(_from)>0, "No bets awaiting resolve! in getUnresolvedBet");
+        require(getUserUnresolvedNum(_from)>0, "No bets awaiting resolve!");
         uint unresolvedIndex = userBets[_from].unresolvedIndexes[0];
         return userBets[_from].betsDetails[unresolvedIndex];
     }
+
+    /**
+     * @notice Function returns the first struct containing unchecked bets for a certain address.
+     * @param _from Address to lookup.
+     * @return Returns memory struct `BetsDetails`.
+     * @dev The functio returns `memory` data in order to make calculations.
+     */
+    function getMemUnresolvedBet(address _from) private view returns (BetsDetails memory) {
+        require(getUserUnresolvedNum(_from)>0, "No bets awaiting resolve!");
+        uint unresolvedIndex = userBets[_from].unresolvedIndexes[0];
+        return userBets[_from].betsDetails[unresolvedIndex];
+    }
+
 
     /**
      * @notice Function checks if the bet is a winning or loosing one.
@@ -268,13 +281,14 @@ contract XamMechanics is Xam {
 
 
     /**
-     * @notice Main function to check bet of specific address. Function checks a single bet every call.
+     * @notice Main function to check bet of specific address. Function checks a single bet every call. `Private` version of the function used internally.
      * @param _from Address to check (resolve) bet of.
+     * @param _flagRemoveAddress 1 or 0 - indicates to remove address from addrToCheck array. Public version of checkBet uses 1. Private version uses 0 in case of automation.
      * @return success Returns true at the end of the function runtime.
-     * @dev Important: `require(latestTimestamp > (selectedBet.timestampOpen+60))` makes sure to not check the prices
+     * @dev Important: `require(latestTimestamp > (selectedBet.timestampOpen+timeThreshold))` (timeThreshold=60) makes sure to not check the prices
      * while the round is still ongoing. Depending on average block time, hardcoded value 60 can be changed and adjusted to needs.
      */
-    function checkBet(address _from) public returns (bool success) {
+    function checkBetPrivate(address _from, uint _flagRemoveAddress) private returns (bool success) {
         checkBlockTiming();
 
         require(isAddrBeingChecked[_from] == false, "Bet is being checked!");
@@ -283,7 +297,7 @@ contract XamMechanics is Xam {
         require(getUserUnresolvedNum(_from)>0, "No unresolved bets!");
         BetsDetails storage selectedBet = getUnresolvedBet(_from);
         require(selectedBet.isResolved == false, "Critical error! Bet already resolved");
-        require(latestTimestamp > (selectedBet.timestampOpen+60) && latestRoundId > selectedBet.roundIdClose, "Try to check bet again later");
+        require(latestTimestamp > (selectedBet.timestampOpen+timeThreshold) && latestRoundId > selectedBet.roundIdClose, "Try to check bet again later");
 
         (int histPrice, /* uint histTimestamp */) = getHistoricalPrice(selectedBet.roundIdClose);
         
@@ -295,9 +309,25 @@ contract XamMechanics is Xam {
         selectedBet.timestampClose = latestTimestamp;
         selectedBet.priceClose = histPrice;
 
+        // If a user checks bet manually instead of using automation, address is removed from addrToCheck array.
+        if (_flagRemoveAddress == 1) {
+            addrChecked(addrToCheck, _from);
+        }
+
         isAddrBeingChecked[_from] = false;
         
         emit BetChecked(_from);
+        return true;
+    }
+
+    /**
+     * @notice Main function to check bet of specific address. Function checks a single bet every call. `Public` function, which can be used externally.
+     * @param _from Address to check (resolve) bet of.
+     * @return success Returns true at the end of the function runtime.
+     * @dev To maintain correct flags instead of using the `private` version externally.
+     */
+    function checkBetPublic(address _from) public returns (bool success) {
+        checkBetPrivate(_from, 1);
         return true;
     }
 
@@ -320,27 +350,36 @@ contract XamMechanics is Xam {
         return false; // Element not found
     }
 
-
-/**
- * @notice Function to automate bets checking. 
- * Loops through array of addresses with unresolved bets.
- * @return success Returns true at the end of the function runtime.
- */
+    /**
+     * @notice Function to automate bets checking. 
+     * Loops through array of addresses with unresolved bets.
+     * @return success Returns true at the end of the function runtime.
+     */
     function checkAllBets() external returns (bool success) {
         require(addrToCheck.length>0,"No addresses pending check");
         require(checkAllBetsInProgress == false, "In progress of checking");
 
         checkAllBetsInProgress = true;
+        checkBlockTiming();
         address[] memory loopedThrough = new address[](addrToCheck.length+1);
 
         for (uint i = 0; i <= addrToCheck.length-1; i++) {
-            checkBet(addrToCheck[i]);
+            // Selects the address in array
+            BetsDetails memory selectedBet = getMemUnresolvedBet(addrToCheck[i]);
+
+            // The first address not meeting the time threshold breaks loop meaning, that
+            //      addresses in the array that are afterwards don't meet it too.
+            if (latestTimestamp <= (selectedBet.timestampOpen+timeThreshold) && latestRoundId <= selectedBet.roundIdClose) {
+                break;
+            }
+
+            checkBetPrivate(addrToCheck[i], 0);
             // Temporary store the address to be removed from addrToCheck
             loopedThrough[i] = addrToCheck[i];
         }
 
-        for (uint i = 0; i <= loopedThrough.length-1; i++) {
-            // Remove address from addrToCheck array
+        // Remove address from addrToCheck array by checking loopedThrough array.
+        for (uint i = 0; i <= loopedThrough.length-1; i++) {    
             addrChecked(addrToCheck, loopedThrough[i]);
         }
 
