@@ -5,6 +5,7 @@ import "./Main.sol";
 import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 
 // Automation:
+// Register new Upkeep: https://automation.chain.link/mumbai/new
 // LINK on polygon testnet contract address: https://docs.chain.link/resources/link-token-contracts
 // Get test LINK: https://faucets.chain.link/mumbai
 // Best practices: https://docs.chain.link/chainlink-automation/compatible-contract-best-practice
@@ -41,6 +42,7 @@ contract XamMechanics is Xam {
     uint totalNumPlacedBets = 0;
     uint latestTimestamp;
     uint80 latestRoundId;
+    bool checkAllBetsInProgress = false;
 
     /**
      * Network: Kovan
@@ -121,7 +123,7 @@ contract XamMechanics is Xam {
      * @return `numUserBets[msg.sender]` Returns number of unresolved bets.
      */
     function getUserUnresolvedNum(address _from) public view returns (uint) {
-        require(userBets[_from].unresolvedIndexes.length>0, "No bets awaiting resolve!");
+        // require(userBets[_from].unresolvedIndexes.length>0, "No bets awaiting resolve! in getUserUnresolvedNum");
         return userBets[_from].unresolvedIndexes.length;
     }
 
@@ -203,7 +205,7 @@ contract XamMechanics is Xam {
      * @dev Any changes to this function returns are permanently stored as function returns `storage` data.
      */
     function getUnresolvedBet(address _from) private view returns (BetsDetails storage) {
-        require(getUserUnresolvedNum(_from)>0, "No bets awaiting resolve!");
+        require(getUserUnresolvedNum(_from)>0, "No bets awaiting resolve! in getUnresolvedBet");
         uint unresolvedIndex = userBets[_from].unresolvedIndexes[0];
         return userBets[_from].betsDetails[unresolvedIndex];
     }
@@ -264,6 +266,7 @@ contract XamMechanics is Xam {
         return true;
     }
 
+
     /**
      * @notice Main function to check bet of specific address. Function checks a single bet every call.
      * @param _from Address to check (resolve) bet of.
@@ -300,19 +303,23 @@ contract XamMechanics is Xam {
 
     /**
      * @notice Function removes checked address from addrToCheck array.
-     * @param _index The index in array of the address to delete.
+     * @param _array The array `addrToCheck` of the addresses to remove specified value from.
+     * @param _lookupValue The address in the array to delete.
      * @return success Returns true at the end of the function runtime.
      */
-    function addrChecked(uint _index) private returns (bool success) {
-        require(_index < addrToCheck.length, "Index out of bounds");
-
-        for (uint i = _index; i < addrToCheck.length-1; i++) {
-            addrToCheck[i] = addrToCheck[i + 1];
+    function addrChecked(address[] storage _array, address _lookupValue) internal returns (bool success) {
+        for (uint i = 0; i < _array.length; i++) {
+            if (_array[i] == _lookupValue) {
+                // Move the last element to the current index
+                _array[i] = _array[_array.length - 1];
+                // Remove the last element
+                _array.pop();
+                return true;
+            }
         }
-
-        addrToCheck.pop();
-        return true;
+        return false; // Element not found
     }
+
 
 /**
  * @notice Function to automate bets checking. 
@@ -321,16 +328,23 @@ contract XamMechanics is Xam {
  */
     function checkAllBets() external returns (bool success) {
         require(addrToCheck.length>0,"No addresses pending check");
+        require(checkAllBetsInProgress == false, "In progress of checking");
 
-        for (uint i = 0; i < addrToCheck.length-1; i++) {
+        checkAllBetsInProgress = true;
+        address[] memory loopedThrough = new address[](addrToCheck.length+1);
+
+        for (uint i = 0; i <= addrToCheck.length-1; i++) {
             checkBet(addrToCheck[i]);
-
-            // Remove address from addrToCheck array if all user bets are checked
-            if(getUserUnresolvedNum(addrToCheck[i]) == 0) {
-                addrChecked(i);
-                i--;
-            }
+            // Temporary store the address to be removed from addrToCheck
+            loopedThrough[i] = addrToCheck[i];
         }
+
+        for (uint i = 0; i <= loopedThrough.length-1; i++) {
+            // Remove address from addrToCheck array
+            addrChecked(addrToCheck, loopedThrough[i]);
+        }
+
+        checkAllBetsInProgress = false;
 
         return true;
     }
