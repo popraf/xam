@@ -7,3 +7,5 @@ backend/cache/
 backend/.env
 backend/.env.json
 backend/contract-address.txt
+api_python/.venv/
+api_python/.env

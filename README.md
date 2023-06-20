@@ -22,3 +22,4 @@ The price is checked directly in the smart contract by requesting the Chainlink 
 #### ETC
 Deployment: npx hardhat run --network mumbai scripts/deployMumbai.js, before deployment set privateKey and polygonMumbaiRPC (used `https://polygon-mumbai-bor.publicnode.com`)
 Tests: 1. npx node run, 2. npx hardhat test
+Interaction with contract: use python api, remember to define keys in .env
