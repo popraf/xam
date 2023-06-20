@@ -20,3 +20,5 @@ The price of XAM for each MATIC might be changed in future.
 The price is checked directly in the smart contract by requesting the Chainlink node network.
 
 #### ETC
+Deployment: npx hardhat run --network mumbai scripts/deployMumbai.js, before deployment set privateKey and polygonMumbaiRPC (used `https://polygon-mumbai-bor.publicnode.com`)
+Tests: 1. npx node run, 2. npx hardhat test

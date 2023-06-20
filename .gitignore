@@ -5,3 +5,5 @@ artifacts/
 bin/
 backend/cache/
 backend/.env
+backend/.env.json
+backend/contract-address.txt
