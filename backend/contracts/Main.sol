@@ -40,7 +40,7 @@ contract Xam {
     }
 
     function transfer(address _to, uint256 _value) public returns (bool success) {
-        require(balances[msg.sender] >= _value);
+        require(balances[msg.sender] >= _value, "Not enough tokens");
 
         balances[msg.sender] -= _value;
         balances[_to] += _value;
