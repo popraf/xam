@@ -9,3 +9,4 @@ backend/.env.json
 backend/contract-address.txt
 api_python/.venv/
 api_python/.env
+api_python/src/__pycache__/
