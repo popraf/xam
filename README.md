@@ -6,7 +6,7 @@ This is just a gambling coin.
 ### How does it work
 1 XAM equals 1 MATIC * tokensPerMatic var (default tokensPerMatic = 100).
 Using XAM bet against price of ETH in next (at least) 5 seconds - short, long, no change.
-If predicted correctly, you receive almost doubled bet price (80% of bet), otherwise bet is lost. 
+If predicted correctly, you receive doubled bet price, otherwise bet is lost. 
 The lost bet means that the token is burned.
 
 ### Token economy
